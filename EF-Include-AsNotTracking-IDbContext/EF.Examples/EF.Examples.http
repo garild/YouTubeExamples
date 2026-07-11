@@ -1,0 +1,6 @@
+@EF.Examples_HostAddress = http://localhost:5256
+
+GET {{EF.Examples_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
