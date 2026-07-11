@@ -59,3 +59,41 @@ dotnet run
 | `POST` | `/api/payments` | Process a polymorphic Stripe or PayPal payment request |
 
 Default URL: `http://localhost:5260`
+
+### [HealthCheck-Examples](./HealthCheck-Examples)
+
+ASP.NET Core minimal API sample that demonstrates built-in health checks with disk space, external API, and simulated HTTP responses.
+
+**Stack:** .NET 10, ASP.NET Core health checks, `IHttpClientFactory`
+
+**What it shows:**
+- Custom `IHealthCheck` implementations for disk space and remote HTTP endpoints
+- GitHub API reachability check (requires a `User-Agent` header)
+- Three httpbin checks running side by side: healthy (200), unhealthy (500), and timeout (`delay/5`)
+- JSON health reports at `/health`, `/health/ready`, and `/health/httpbin`
+- Health Checks UI dashboard at `/health-ui`
+
+**Run it:**
+
+```bash
+cd HealthCheck-Examples/HealthCheck.Examples
+dotnet run
+```
+
+**Health endpoints:**
+
+| Route | Description |
+|-------|-------------|
+| `GET` | `/health` | Runs all checks and returns a JSON report |
+| `GET` | `/health/ready` | Runs checks tagged as `ready` |
+| `GET` | `/health-ui` | Visual dashboard for monitoring health status |
+
+Default URL: `http://localhost:5264`
+
+**httpbin demo checks** (configured in `appsettings.json`):
+
+| Check | URL | Expected result |
+|-------|-----|-----------------|
+| `httpbin_200` | `https://httpbin.org/status/200` | `Healthy` |
+| `httpbin_500` | `https://httpbin.org/status/500` | `Unhealthy` |
+| `httpbin_timeout` | `https://httpbin.org/delay/5` | `Unhealthy` (3s timeout) |
