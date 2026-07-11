@@ -86,7 +86,6 @@ dotnet run
 |-------|-------------|
 | `GET` | `/health` | Runs all checks and returns a JSON report |
 | `GET` | `/health/ready` | Runs checks tagged as `ready` |
-| `GET` | `/health/httpbin` | Runs the three httpbin demo checks only |
 | `GET` | `/health-ui` | Visual dashboard for monitoring health status |
 
 Default URL: `http://localhost:5264`
