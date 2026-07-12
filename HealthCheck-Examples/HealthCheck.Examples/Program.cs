@@ -7,9 +7,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly());
 //builder.Services.AddExampleHealthChecks(builder.Configuration);
+
 var options = new SmartHealthCheckOptions();
 builder.Services.Configure<SmartHealthCheckOptions>(
             builder.Configuration.GetSection(SmartHealthCheckOptions.SectionName));
+
+builder.Services.AddOptionsWithValidateOnStart<SmartHealthCheckOptions>().ValidateDataAnnotations();
 
 builder.Configuration.GetSection(SmartHealthCheckOptions.SectionName).Bind(options);
 
@@ -17,7 +20,7 @@ builder.Services.AddSmartHealthChecks(options);
 
 builder.Services
     .AddHealthChecksUI()
-    .AddInMemoryStorage();
+    .AddSqliteStorage("Data Source=healthchecks.db");
 
 var app = builder.Build();
 

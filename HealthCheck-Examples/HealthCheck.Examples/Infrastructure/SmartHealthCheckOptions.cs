@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using static HealthCheck.Examples.Infrastructure.RabbitMqHealthCheckOptions;
 
 namespace HealthCheck.Examples.Infrastructure;
@@ -10,7 +11,8 @@ public sealed class SmartHealthCheckOptions
 
     public ServiceHealthCheckOptions Redis { get; set; }
 
-    public RabbitMqHealthCheckOptions RabbitMq { get; set; }
+    [Required]
+    public RabbitMqHealthCheckOptions? RabbitMq { get; set; }
 
     public KeycloakHealthCheckOptions Keycloak { get; set; }
 }

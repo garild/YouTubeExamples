@@ -41,12 +41,14 @@ namespace HealthCheck.Examples.Infrastructure.HealthChecks
 
                 builder.AddDiskStorageHealthCheck(p=>
                 {
-                    p.AddDrive("C", 160000);
+                    p.AddDrive("C:\\", 50 * 1024);
+                    p.AddDrive("D:\\", 50 * 1024);
 
                 }, "DiskStorage", HealthStatus.Degraded, tags: ["memory", "disk storage", "readiness"]);
 
 
-                builder.AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: ["self", "readiness"]);
+                //Self ping check, to check if the application is running and healthy
+                builder.AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["self", "readiness"]);
 
                 if (options.Keycloak.Enabled)
                 {
