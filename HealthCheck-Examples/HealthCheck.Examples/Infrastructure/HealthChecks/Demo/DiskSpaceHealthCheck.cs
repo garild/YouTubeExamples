@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
-namespace HealthCheck.Examples.HealthChecks;
+namespace HealthCheck.Examples.Infrastructure.HealthChecks.Demo;
 
 public sealed class DiskSpaceHealthCheck(IOptions<DiskSpaceHealthCheckOptions> options) : IHealthCheck
 {

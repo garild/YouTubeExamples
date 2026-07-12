@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace HealthCheck.Examples.HealthChecks;
+namespace HealthCheck.Examples.Infrastructure.HealthChecks.Demo;
 
-public static class ServiceCollectionExtensions
+public static class DemoServiceCollectionExtensions
 {
     public static IServiceCollection AddExampleHealthChecks(
         this IServiceCollection services,

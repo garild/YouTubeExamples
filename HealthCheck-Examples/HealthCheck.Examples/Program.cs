@@ -1,9 +1,20 @@
-using HealthCheck.Examples.HealthChecks;
+using HealthCheck.Examples.Infrastructure;
+using HealthCheck.Examples.Infrastructure.HealthChecks;
 using HealthChecks.UI.Client;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddExampleHealthChecks(builder.Configuration);
+builder.Configuration.AddUserSecrets(Assembly.GetExecutingAssembly());
+//builder.Services.AddExampleHealthChecks(builder.Configuration);
+var options = new SmartHealthCheckOptions();
+builder.Services.Configure<SmartHealthCheckOptions>(
+            builder.Configuration.GetSection(SmartHealthCheckOptions.SectionName));
+
+builder.Configuration.GetSection(SmartHealthCheckOptions.SectionName).Bind(options);
+
+builder.Services.AddSmartHealthChecks(options);
+
 builder.Services
     .AddHealthChecksUI()
     .AddInMemoryStorage();
@@ -19,7 +30,13 @@ app.MapHealthChecks("/health", new()
 
 app.MapHealthChecks("/health/ready", new()
 {
-    Predicate = check => check.Tags.Contains("ready"),
+    Predicate = check => check.Tags.Contains("readiness"),
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+
+app.MapHealthChecks("/health/live", new()
+{
+    Predicate = check => check.Tags.Contains("liveness"),
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
 });
 

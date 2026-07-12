@@ -1,4 +1,4 @@
-namespace HealthCheck.Examples.HealthChecks;
+namespace HealthCheck.Examples.Infrastructure.HealthChecks.Demo;
 
 public sealed class HttpBinHealthCheckOptions
 {

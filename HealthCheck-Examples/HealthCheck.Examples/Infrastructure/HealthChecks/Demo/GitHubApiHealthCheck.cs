@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace HealthCheck.Examples.HealthChecks;
+namespace HealthCheck.Examples.Infrastructure.HealthChecks.Demo;
 
 public sealed class GitHubApiHealthCheck(HttpClient httpClient) : IHealthCheck
 {

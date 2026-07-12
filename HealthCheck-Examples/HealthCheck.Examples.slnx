@@ -1,3 +1,7 @@
 <Solution>
+  <Folder Name="/docker/">
+    <File Path=".env" />
+    <File Path="docker-compose.yml" />
+  </Folder>
   <Project Path="HealthCheck.Examples/HealthCheck.Examples.csproj" />
 </Solution>
