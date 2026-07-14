@@ -1,0 +1,23 @@
+@MultiTenant.Api_HostAddress = http://localhost:5011
+
+POST {{MultiTenant.Api_HostAddress}}/orders/
+Content-Type: application/json
+Accept: application/json
+X-Tenant-ID: tenant1
+
+{
+    "name": "Test",
+    "companyName": "Garib"
+}
+###
+
+GET {{MultiTenant.Api_HostAddress}}/orders/
+Accept: application/json
+X-Tenant-ID: tenant1
+###
+
+
+GET {{MultiTenant.Api_HostAddress}}
+Accept: application/json
+X-Tenant-ID: tenant1
+###

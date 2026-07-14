@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/pipelines/">
+    <File Path="readme.md" />
+  </Folder>
+  <Project Path="MultiTenant.Api/MultiTenant.Api.csproj" Id="a4213712-67ff-48c1-ba9d-ae396f8efe4f" />
+</Solution>
