@@ -1,0 +1,127 @@
+# ==========================================
+# Azure DevOps Pipeline: Auth0 Provisioning (Terraform)
+# ==========================================
+parameters:
+  - name: targetEnvironment
+    displayName: 'Target Environment'
+    type: string
+    default: dev
+    values:
+      - dev
+      - staging
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - terraform/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: terraformWorkingDirectory
+    value: '$(System.DefaultWorkingDirectory)/terraform'
+
+  # Per-environment Library variable group holding the Management API credentials,
+  # plus the name of the group that receives the provisioned Auth0 outputs.
+  - ${{ if eq(parameters.targetEnvironment, 'dev') }}:
+      - group: 'auth0-management-dev'
+      - name: outputVariableGroup
+        value: 'dev-auth0-north-eu'
+  - ${{ if eq(parameters.targetEnvironment, 'staging') }}:
+      - group: 'auth0-management-staging'
+      - name: outputVariableGroup
+        value: 'staging-auth0-central-eu'
+
+stages:
+- stage: Auth0_Plan
+  displayName: 'Terraform Plan (${{ parameters.targetEnvironment }})'
+  jobs:
+  - job: TerraformPlan
+    displayName: 'Run Terraform Plan'
+    steps:
+    - task: TerraformInstaller@1
+      displayName: 'Install Terraform'
+      inputs:
+        terraformVersion: 'latest'
+
+    # Remote state lives in an Azure Storage account (see terraform/backend.tf).
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Init'
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(terraformWorkingDirectory)'
+        backendServiceArm: 'Azure subscription 1(2a0fd781-da04-4038-9095-7b677ae5986a)'
+        backendAzureRmResourceGroupName: 'youtube-examples'
+        backendAzureRmStorageAccountName: 'tfbackendyotubenortheu'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'auth0-managment'
+
+    # Plan mapped to the azurerm provider for backend access.
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Plan'
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(terraformWorkingDirectory)'
+        environmentServiceNameAzureRM: 'Azure subscription 1(2a0fd781-da04-4038-9095-7b677ae5986a)'
+      env:
+        TF_VAR_ENVIRONMENT: '${{ parameters.targetEnvironment }}'
+        TF_VAR_AUTH0_DOMAIN: '$(AUTH0_DOMAIN)'
+        TF_VAR_AUTH0_CLIENT_ID: '$(AUTH0_CLIENT_ID)'
+        TF_VAR_AUTH0_CLIENT_SECRET: '$(AUTH0_CLIENT_SECRET)'
+        TF_VAR_OUTPUT_VARIABLE_GROUP_NAME: '$(outputVariableGroup)'
+        AZDO_ORG_SERVICE_URL: '$(System.CollectionUri)'
+        AZDO_PERSONAL_ACCESS_TOKEN: '$(System.AccessToken)'
+
+- stage: Auth0_Apply
+  displayName: 'Terraform Apply (${{ parameters.targetEnvironment }})'
+  dependsOn: Auth0_Plan
+  condition: succeeded()
+  jobs:
+  - deployment: TerraformApply
+    displayName: 'Apply Auth0 changes'
+    environment: 'auth0-${{ parameters.targetEnvironment }}'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: 'latest'
+
+          # MUST include backend parameters here too so Apply knows where your state lives!
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(terraformWorkingDirectory)'
+              backendServiceArm: 'Azure subscription 1(2a0fd781-da04-4038-9095-7b677ae5986a)'
+              backendAzureRmResourceGroupName: 'youtube-examples'
+              backendAzureRmStorageAccountName: 'tfbackendyotubenortheu'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: 'auth0-managment'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Apply'
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              workingDirectory: '$(terraformWorkingDirectory)'
+              environmentServiceNameAzureRM: 'Azure subscription 1(2a0fd781-da04-4038-9095-7b677ae5986a)'
+            env:
+              TF_VAR_ENVIRONMENT: '${{ parameters.targetEnvironment }}'
+              TF_VAR_AUTH0_DOMAIN: '$(AUTH0_DOMAIN)'
+              TF_VAR_AUTH0_CLIENT_ID: '$(AUTH0_CLIENT_ID)'
+              TF_VAR_AUTH0_CLIENT_SECRET: '$(AUTH0_CLIENT_SECRET)'
+              TF_VAR_OUTPUT_VARIABLE_GROUP_NAME: '$(outputVariableGroup)'
+              AZDO_ORG_SERVICE_URL: '$(System.CollectionUri)'
+              AZDO_PERSONAL_ACCESS_TOKEN: '$(System.AccessToken)'
