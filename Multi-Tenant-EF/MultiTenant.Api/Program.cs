@@ -6,6 +6,9 @@ using MultiTenant.Api.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+//Key Vault - Secret manager
+
 builder.Services.ConfigureHttpJsonOptions(p =>
 {
     p.SerializerOptions.PropertyNameCaseInsensitive = true;
