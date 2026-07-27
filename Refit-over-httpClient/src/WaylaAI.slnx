@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="WaylaAI.Booking.Api/WaylaAI.Booking.Api.csproj" />
+  <Project Path="WaylaAI.Booking.Application/WaylaAI.Booking.Application.csproj" />
+  <Project Path="WaylaAI.Booking.Domain/WaylaAI.Booking.Domain.csproj" />
+  <Project Path="WaylaAI.Booking.Infrastructure/WaylaAI.Booking.Infrastructure.csproj" />
+  <Project Path="WaylaAI.Payment.Api/WaylaAI.Payment.Api.csproj" />
+  <Project Path="WaylaAI.Payment.Client/WaylaAI.Payment.Client.csproj" Id="013683db-b02a-4578-9a34-86245f850db9" />
+</Solution>
