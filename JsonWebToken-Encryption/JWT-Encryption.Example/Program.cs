@@ -1,48 +1,86 @@
 ﻿
+
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Cryptography;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
+var signingKey = new SymmetricSecurityKey(
+    Encoding.UTF8.GetBytes("0123456789ABCDEF0123456789ABCDEF"));//Weak
 
-var tokenDescriptor = """
-    eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik52RmxWUkluRklhaFlMU0l3bHVxbCJ9.
-    eyJpc3MiOiJodHRwczovL2Rldi15b3V0dWJlLWd0LmV1LmF1dGgwLmNvbS8iLCJzdWIiOiJUSXRka
-    VZpN1JIY3ZRb2JDMXYyYkNQQnFEN2ZBMlo5cUBjbGllbnRzIiwiYXVkIjoiaHR0cHM6Ly9hcGkucH
-    JvZHVjdHMubG9jYWwiLCJpYXQiOjE3ODQzNzMxODUsImV4cCI6MTc4NDQ1OTU4NSwic2NvcGUiOiJ
-    yZWFkOnByb2R1Y3RzIHdyaXRlOnByb2R1Y3RzIiwiZ3R5IjoiY2xpZW50LWNyZWRlbnRpYWxzIiwi
-    YXpwIjoiVEl0ZGlWaTdSSGN2UW9iQzF2MmJDUEJxRDdmQTJaOXEifQ.
-    tmZqUs2awQs1kxyTvXIyjGN1I-9OieyDUVFnGlkToeL8L5tqymMvFmcGFtXnqLyqU5mlz84gm-Dk2
-    _r84nFNSVFXsxRkdhVpENoNlTvhdrEom7StE9xVRVRH8Pj2FPm_y6mPGudxrTpdN_QrAQSkA8PNXaKk8dNKV8gX2_
-    O8SdBfN6LB9H3AcDkRutaoS5NyBIOJ_lUowXcYrrrjlHLDnFbQEnATW_cdIQ_x29i6fg1qmZHBnva_
-    0jX1DDxY0mHg33hm9BoxRcfB8Bxui7AlrQRcNEdf65dETvPTRktA2-aFIdE_FboQeHW4UuyI_L_
-    XK3HJw2fGaiB6GY5X_i2nAg
-    """;
+var encryptionKey = new SymmetricSecurityKey(
+    Encoding.UTF8.GetBytes("1234567890ABCDEF1234567890ABCDEF")); //Weak
 
-// 1. RSA key pair
-//    In production: load from Azure Key Vault or X.509 certificate
-using var rsa = RSA.Create(2048);
-var rsaSecurityKey = new RsaSecurityKey(rsa)
+// Default dummy claims for demonstration purposes
+var claims = new[]
 {
-    KeyId = "rsa-key-2026"
+    new Claim(ClaimTypes.NameIdentifier, "TestId-1234"),
+    new Claim(ClaimTypes.Email, "admin@company.com"),
+    new Claim(ClaimTypes.Role, "Administrator"),
+    new Claim("salary", "$250000")
 };
 
-// 2. Encryption credentials
-//    Key wrap algorithm:      RSA-OAEP        (wraps the symmetric CEK)
-//    Content encryption algo: AES-256-CBC + HMAC-SHA-512
+var token = new JwtSecurityToken(
+
+    issuer: "DemoApi",
+    audience: "DemoClient",
+    claims: claims,
+    expires: DateTime.UtcNow.AddMinutes(30),
+
+        signingCredentials: new SigningCredentials(
+        signingKey,
+        SecurityAlgorithms.HmacSha256)
+
+);
+
 var encryptingCredentials = new EncryptingCredentials(
-    rsaSecurityKey,
-    SecurityAlgorithms.RsaOAEP,
-    SecurityAlgorithms.Aes256CbcHmacSha512);
+        encryptionKey,
+        SecurityAlgorithms.Aes256KW,
+        SecurityAlgorithms.Aes256CbcHmacSha512);
 
-// 3. Token descriptor — notice NO SigningCredentials needed
+var handler = new JwtSecurityTokenHandler();
 
-// 4. Create the JWE token
-var handler = new JsonWebTokenHandler();
-string jweToken = handler.EncryptToken(tokenDescriptor, encryptingCredentials);
+var jwt = handler.WriteToken(token);
 
-// Output structure: 5 base64url parts separated by dots
-// header . encryptedKey . iv . ciphertext . authTag
-//
-// Decode header:  {"alg":"RSA-OAEP","enc":"A256CBC-HS512","typ":"JWT"}
-// Everything else: encrypted — unreadable without the RSA private key
+
+// readable JWT (JWS)
+Console.WriteLine(jwt);
+
+var jsonWebToken = new JsonWebTokenHandler();
+string jweToken = jsonWebToken.EncryptToken(jwt, encryptingCredentials);
+
+
+Console.WriteLine("Encrypted JWT (JWE)");
 Console.WriteLine(jweToken);
+
+
+// Read the token back
+var validationParameters = new TokenValidationParameters
+{
+    ValidIssuer = "DemoApi",
+    ValidAudience = "DemoClient",
+
+    ValidateIssuer = true,
+    ValidateAudience = true,
+    ValidateLifetime = true,
+
+    IssuerSigningKey = signingKey,
+    TokenDecryptionKey = encryptionKey
+};
+
+// JWT is my token which I have created and encrypted above
+handler.ValidateToken(
+    jwt,
+    validationParameters,
+    out var validatedToken);
+
+Console.WriteLine("Successfully decrypted!");
+
+var decrypted = (JwtSecurityToken)validatedToken;
+
+Console.WriteLine($"Subject: {decrypted.Issuer}");
+
+
+
+
