@@ -1,0 +1,119 @@
+# Azure DevOps Pipeline: Infrastructure Provisioning (Terraform)
+#
+# Multi-environment: choose the target environment at queue time. Values are injected
+# into Terraform through TF_VAR_* environment variables (no .tfvars files required).
+#   dev     -> North Europe   (northeurope)
+#   staging -> Central Europe (westeurope)
+parameters:
+  - name: targetEnvironment
+    displayName: 'Target Environment'
+    type: string
+    default: dev
+    values:
+      - dev
+      - staging
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - Terraform-Azure-Web-API/terraform/*
+      - Terraform-Azure-Web-API/terraform/modules/**/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: terraformWorkingDirectory
+    value: '$(System.DefaultWorkingDirectory)/Terraform-Azure-Web-API/terraform'
+
+  # Shared across environments
+  - name: tfAuth0Audience
+    value: 'https://api.products.local'
+
+  # Environment-specific settings resolved from the selected parameter.
+  - ${{ if eq(parameters.targetEnvironment, 'dev') }}:
+      - name: azureServiceConnection
+        value: 'azure-service-connection-dev'
+      - name: tfLocation
+        value: 'northeurope'
+      - name: tfAuth0Domain
+        value: 'dev-tenant.auth0.com'
+  - ${{ if eq(parameters.targetEnvironment, 'staging') }}:
+      - name: azureServiceConnection
+        value: 'azure-service-connection-staging'
+      - name: tfLocation
+        value: 'westeurope'
+      - name: tfAuth0Domain
+        value: 'staging-tenant.auth0.com'
+
+stages:
+- stage: Infra_Plan
+  displayName: 'Terraform Dry Run Plan (${{ parameters.targetEnvironment }})'
+  jobs:
+  - job: TerraformPlan
+    displayName: 'Run Terraform Plan'
+    steps:
+    - task: TerraformInstaller@1
+      displayName: 'Install Terraform'
+      inputs:
+        terraformVersion: 'latest'
+
+    - task: TerraformCLI@1
+      displayName: 'Terraform Init'
+      inputs:
+        command: 'init'
+        workingDirectory: '$(terraformWorkingDirectory)'
+
+    - task: TerraformCLI@1
+      displayName: 'Terraform Plan'
+      inputs:
+        command: 'plan'
+        workingDirectory: '$(terraformWorkingDirectory)'
+        environmentServiceName: '$(azureServiceConnection)'
+        publishPlanResults: 'terraform-${{ parameters.targetEnvironment }}-plan'
+      env:
+        TF_VAR_ENVIRONMENT: '${{ parameters.targetEnvironment }}'
+        TF_VAR_LOCATION: '$(tfLocation)'
+        TF_VAR_AUTH0_DOMAIN: '$(tfAuth0Domain)'
+        TF_VAR_AUTH0_AUDIENCE: '$(tfAuth0Audience)'
+
+- stage: Infra_Apply
+  displayName: 'Terraform Deploy Infrastructure (${{ parameters.targetEnvironment }})'
+  dependsOn: Infra_Plan
+  condition: succeeded()
+  jobs:
+  - deployment: TerraformApply
+    displayName: 'Apply Terraform changes'
+    environment: '${{ parameters.targetEnvironment }}-infra' # Environment for approval gate validation
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformCLI@1
+            displayName: 'Terraform Init'
+            inputs:
+              command: 'init'
+              workingDirectory: '$(terraformWorkingDirectory)'
+
+          - task: TerraformCLI@1
+            displayName: 'Terraform Apply'
+            inputs:
+              command: 'apply'
+              workingDirectory: '$(terraformWorkingDirectory)'
+              environmentServiceName: '$(azureServiceConnection)'
+            env:
+              TF_VAR_ENVIRONMENT: '${{ parameters.targetEnvironment }}'
+              TF_VAR_LOCATION: '$(tfLocation)'
+              TF_VAR_AUTH0_DOMAIN: '$(tfAuth0Domain)'
+              TF_VAR_AUTH0_AUDIENCE: '$(tfAuth0Audience)'

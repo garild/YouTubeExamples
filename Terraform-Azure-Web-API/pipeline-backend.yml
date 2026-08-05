@@ -1,0 +1,83 @@
+# Azure DevOps Pipeline: Backend CI/CD (.NET Web API)
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - Terraform-Azure-Web-API/Products.Api/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: azureServiceConnection
+    value: 'azure-service-connection-dev'
+  - name: dotNetProjectDirectory
+    value: '$(System.DefaultWorkingDirectory)/Terraform-Azure-Web-API/Products.Api'
+  - name: webAppName
+    value: 'app-yt-examples-api-dev'
+
+stages:
+- stage: CI_Build
+  displayName: 'CI - Build & Package API'
+  jobs:
+  - job: BuildAPI
+    displayName: 'Dotnet Build API'
+    steps:
+    - task: UseDotNet@2
+      displayName: 'Install .NET SDK'
+      inputs:
+        version: '10.x'
+        packageType: 'sdk'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet restore'
+      inputs:
+        command: 'restore'
+        projects: '$(dotNetProjectDirectory)/*.csproj'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet build'
+      inputs:
+        command: 'build'
+        projects: '$(dotNetProjectDirectory)/*.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet publish'
+      inputs:
+        command: 'publish'
+        publishWebProjects: false
+        projects: '$(dotNetProjectDirectory)/*.csproj'
+        arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/api'
+        zipAfterPublish: true
+
+    - publish: '$(Build.ArtifactStagingDirectory)/api'
+      displayName: 'Publish Build Artifacts'
+      artifact: api-drop
+
+- stage: CD_Deploy
+  displayName: 'CD - Release API'
+  dependsOn: CI_Build
+  condition: succeeded()
+  jobs:
+  - deployment: DeployAPI
+    displayName: 'Deploy API to App Service'
+    environment: 'development-apps'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: api-drop
+
+          - task: AzureRmWebAppDeployment@4
+            displayName: 'Deploy to Linux Web App'
+            inputs:
+              ConnectionType: 'AzureRM'
+              azureSubscription: '$(azureServiceConnection)'
+              appType: 'webAppLinux'
+              WebAppName: '$(webAppName)'
+              package: '$(Pipeline.Workspace)/api-drop/*.zip'

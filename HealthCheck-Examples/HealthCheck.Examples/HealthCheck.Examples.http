@@ -1,0 +1,13 @@
+@host = http://localhost:5264
+
+### All health checks
+GET {{host}}/health
+
+### Ready checks only
+GET {{host}}/health/ready
+
+### httpbin demo checks only (200, 500, timeout)
+GET {{host}}/health/httpbin
+
+### Health Checks UI dashboard
+# Open in browser: {{host}}/health-ui

@@ -1,0 +1,59 @@
+# Azure DevOps Pipeline: Frontend CI/CD (Tailwind SPA Client)
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - Terraform-Azure-Web-API/frontend/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Deployment token mapped via variables group dev-environment-secrets or direct environment variables
+  - group: 'dev-environment-secrets'
+  - name: frontendDirectory
+    value: '$(System.DefaultWorkingDirectory)/Terraform-Azure-Web-API/frontend'
+
+stages:
+- stage: CI_Package
+  displayName: 'CI - Package Frontend'
+  jobs:
+  - job: ArchiveUI
+    displayName: 'Archive UI SPA Files'
+    steps:
+    - task: ArchiveFiles@2
+      displayName: 'Archive UI static directory'
+      inputs:
+        rootFolderOrFile: '$(frontendDirectory)'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/ui/frontend.zip'
+        replaceExistingArchive: true
+
+    - publish: '$(Build.ArtifactStagingDirectory)/ui'
+      displayName: 'Publish UI Artifacts'
+      artifact: ui-drop
+
+- stage: CD_Deploy
+  displayName: 'CD - Release Frontend'
+  dependsOn: CI_Package
+  condition: succeeded()
+  jobs:
+  - deployment: DeployUI
+    displayName: 'Deploy UI to Static Web App'
+    environment: 'development-apps'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: ui-drop
+
+          - task: AzureStaticWebApp@0
+            displayName: 'Deploy to Static Web App'
+            inputs:
+              app_location: '$(Pipeline.Workspace)/ui-drop'
+              azure_static_web_apps_api_token: '$(SWA_DEPLOYMENT_TOKEN)'

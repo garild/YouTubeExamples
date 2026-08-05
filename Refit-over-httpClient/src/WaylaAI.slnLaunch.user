@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "WaylaAI.Booking.Api\\WaylaAI.Booking.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "WaylaAI.Payment.Api\\WaylaAI.Payment.Api.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
